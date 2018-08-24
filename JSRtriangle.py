@@ -20,8 +20,10 @@ Nozzle = 1000      # Test (Matras R1)
 
 # Reactor Temperature [K]
 Temp =  20 + 273.15
+
 # Residence Time [s]
 tau = 5.0
+
 # Adimensional Constant
 # *(we need to find more data on this constant. thers is supposedly a paper
 # that provides A as a function of temperature) 
@@ -30,7 +32,7 @@ A = 0.3 #np.pi/4
 #------------------------------------------------------------------------------
 # Species Information/Thermo Data
 #------------------------------------------------------------------------------
-# Stoichiometric Air/Methane
+# Stoichiometric Air/Methane (example)
 #  (1)CH4 +  (2)(02 + 3.76N2) = (2)H2O + (1)CO2 + (7.52)N2
 #------------------------------------------------------------------------------
 N2 = therm.Chemical('n2',T=Temp)            # Test (Matras R1)
