@@ -6,6 +6,7 @@ import thermo as therm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from CoolProp.CoolProp import PropsSI
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # JSR OPERATIONAL SPACE
@@ -13,21 +14,21 @@ import pandas as pd
 #------------------------------------------------------------------------------
 # Dimensions of the Reactor
 #------------------------------------------------------------------------------
-#Reactor = 0.029   # Burke Lab
-#Nozzle = 300      # Burke Lab 
-Reactor = 0.070    # Test (Matras R1)
-Nozzle = 1000      # Test (Matras R1)
+Reactor = 0.029     # Burke Lab
+Nozzle = 300        # Burke Lab 
+#Reactor = 0.070    # Test (Matras R1)
+#Nozzle = 1000      # Test (Matras R1)
+
+# Ambient Temperature [K]
+Tamb = 298.15
 
 # Reactor Temperature [K]
-Temp =  20 + 273.15
-
-# Residence Time [s]
-tau = 5.0
+Temp = 449.85 + 273.15         #723
 
 # Adimensional Constant
 # *(we need to find more data on this constant. thers is supposedly a paper
 # that provides A as a function of temperature) 
-A = 0.3 #np.pi/4
+A = np.pi/4  #0.3                   #np.pi/4 
 
 #------------------------------------------------------------------------------
 # Species Information/Thermo Data
@@ -35,16 +36,20 @@ A = 0.3 #np.pi/4
 # Stoichiometric Air/Methane (example)
 #  (1)CH4 +  (2)(02 + 3.76N2) = (2)H2O + (1)CO2 + (7.52)N2
 #------------------------------------------------------------------------------
-N2 = therm.Chemical('n2',T=Temp)            # Test (Matras R1)
-O2 = therm.Chemical('o2',T=Temp)            # Test (Matras R1)
-Ar = therm.Chemical('argon',T=Temp)         # Test (Matras R1)
+N2_amb = therm.Chemical('n2',T=298.15)
+He_amb = therm.Chemical('helium',T=298.15)      
+Ar_amb = therm.Chemical('argon',T=298.15) 
+
+N2 = therm.Chemical('n2',T=Temp)
+He = therm.Chemical('helium',T=Temp)      
+Ar = therm.Chemical('argon',T=Temp)         
 
 # (N2, O2, Ar)
 # Mole Fractions []
-n = np.array([0.7809,0.2095,0.0096])
+n = np.array([1,0,0])
 
 # Molecular Mass [g/mol]
-M = np.array([N2.MW,O2.MW,Ar.MW])
+M = np.array([N2.MW,He.MW,Ar.MW])
 
 # Mass Fractions []
 # *(mole fraction below if given mass fraction) 
@@ -55,13 +60,14 @@ y = (n*M)/(sum(n*M))
 R_uni = 8.3144598 
 
 # Cp [J/(K*g)]
-Cp = np.array([N2.Cpg/1000,O2.Cpg/1000,Ar.Cpg/1000])
+Cp = np.array([N2.Cpg/1000,He.Cpg/1000,Ar.Cpg/1000]) #He = 5.192 at atmospheric conditions
 
 # Mass Density [g/m^3]
-rho = np.array([N2.rhog*1000,O2.rhog*1000,Ar.rhog*1000]) 
+rho_amb = np.array([N2_amb.rhog*1000,He_amb.rhog*1000,Ar_amb.rhog*1000])
+rho = np.array([N2.rhog*1000,He.rhog*1000,Ar.rhog*1000])
 
 # Dynamic Viscosity [(g/(m*s^2))*s]
-nu = np.array([N2.mug*1000,O2.mug*1000,Ar.mug*1000])
+nu = np.array([N2.mug*1000,He.mug*1000,Ar.mug*1000])
 
 #------------------------------------------------------------------------------
 # Mixture Information/Thermo Data
@@ -71,12 +77,42 @@ M_mix = sum(n*M)
 # Gas Constant [J/(K*g)]
 R_mix = (R_uni)/M_mix
 # Mass Density [g/m^3]
+rho_mix_amb = sum(n*rho_amb)
 rho_mix = sum(n*rho)
 # Dynamic Viscosity [g/(m*s)]
 nu_mix = sum(n*nu)
 # Speed of Sound (T,P) [m/s]
 k_mix = (sum(y*Cp))/((sum(y*Cp)-R_mix))
 c_mix = np.sqrt(k_mix*R_mix*Temp*1000)
+
+#------------------------------------------------------------------------------
+# Mass/Volumetric Flow Rates
+#------------------------------------------------------------------------------
+## Volumetric Flow Rate at MFC's [L/min]
+#Qamb = 0.5
+#
+## Volumetric Flow Rate in Reactor [m^3/s]
+#Q = (Qamb/(1000*60))/(rho_mix/rho_mix_amb)
+#
+## Mass Flow Rate
+#MFR = Q*rho_mix
+#
+## Residence Time [s]
+#tau = (np.pi*(Reactor**3))/(3*Q)
+
+
+# Residence Time [s]
+tau = 3.0
+
+# Volumetric Flow Rate in Reactor [m^3/s]
+Q = (np.pi*(Reactor**3))/(3*tau)
+
+# Mass Flow Rate
+MFR = Q*rho_mix 
+
+# Volumetric Flow Rate at MFC's
+# PV=mRT
+Qamb = Q*(rho_mix/rho_mix_amb)
 
 #------------------------------------------------------------------------------
 # The Three Limits
@@ -119,6 +155,7 @@ for x in range(1,Nozzle*1000,1):
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # PLOTTING THE RESULTS
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+plt.figure()
 #------------------------------------------------------------------------------
 # Finding the Corners of the Triangle to Bound an Operational Space
 #------------------------------------------------------------------------------
@@ -185,13 +222,19 @@ plt.loglog(Rs,ds,color='g', linestyle='-')
 plt.title('JSR Operational Limits', color='k')
 plt.ylabel('Nozzle Diameter [m]', color='k')
 plt.xlabel('Reactor Radius [m]', color='k')
+#plt.text(0.035,0.00028,'N\u2082',color='k')                           #\u2082
+plt.text(0.35,0.003,'T = %.2f'%Temp+' K',color='k')
+plt.text(0.35,0.002,r'$\tau$ = %.3f'%tau+' s',color='k')
+plt.text(0.35,0.0013,r'$\dot{m}$ = %.3f'%MFR+' g/s',color='k')
+plt.text(0.35,0.0008,r'$\dot{Q}$ at MFC = %.3f'%(Qamb*1000*60)+' L/min',color='k')
+plt.text(0.35,0.0005,r'$\dot{Q}$ in R = %.3f'%(Q*1000*60)+' L/min',color='k')
 plt.legend(['Reactor','Turbulence Limit','Recycling Limit','Sonic Limit'],
            fancybox=True,loc='lower right')
 # Adding tick marks to all sides of the plot 
 plt.tick_params(axis='both',which='both',direction='in',width=1.25,top=True,
                 right=True)
-plt.savefig('JSRplot.jpg',dpi=1200,bbox_inches='tight')
-
+plt.show()
+plt.savefig('JSRplot_N2.jpg',dpi=1200,bbox_inches='tight')
 #------------------------------------------------------------------------------
 
 
